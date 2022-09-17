@@ -8,7 +8,7 @@
 #define IFNAMSIZ 16
 #endif
 
-//type
+// type
 #define NET_DEVICE_TYPE_DUMMY 0x0000
 #define NET_DEVICE_TYPE_LOOPBACK 0x0001
 #define NET_DEVICE_TYPE_ETHERNET 0x0002
@@ -24,6 +24,11 @@
 #define NET_DEVICE_IS_UP(x) ((x)->flags & NET_DEVICE_FLAG_UP)
 #define NET_DEVICE_STATE(x) (NET_DEVICE_FLAG_UP ? "up" : "down")
 
+/* NOTE: use same value as the Ethernet types */
+#define NET_PROTOCOL_TYPE_IP 0x0800
+#define NET_PROTOCOL_TYPE_ARP 0x0806
+#define NET_PROTOCOL_TYPE_IPV6 0x86dd
+
 struct net_device
 {
     struct net_device *next;
@@ -35,7 +40,8 @@ struct net_device
     uint16_t hlen; // header length
     uint16_t alen; // address length
     uint8_t addr[NET_DEVICE_ADDR_LEN];
-    union{
+    union
+    {
         uint8_t peer[NET_DEVICE_ADDR_LEN];
         uint8_t broadcast[NET_DEVICE_ADDR_LEN];
     };
@@ -52,7 +58,10 @@ struct net_device_ops
 
 extern struct net_device *net_device_alloc(void);
 extern int net_device_register(struct net_device *dev);
-extern int net_device_output(struct net_device *dev,uint16_t type,const uint8_t*data,size_t len,const void*dst);
+extern int net_device_output(struct net_device *dev, uint16_t type, const uint8_t *data, size_t len, const void *dst);
+
+extern int net_protocol_register(uint16_t type,
+                                 void (*handler)(const uint8_t *data, size_t len, struct net_device *dev));
 
 extern int net_input_handler(uint16_t type, const uint8_t *data, size_t len, struct net_device *dev);
 extern int net_run(void);
