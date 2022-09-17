@@ -93,7 +93,7 @@ static void *intr_thread(void *arg)
             {
                 if (entry->irq == (unsigned int)sig)
                 {
-                    //call intrupt handler
+                    // call intrupt handler
                     debugf("irq=%d,name=%s", entry->irq, entry->name);
                     entry->handler(entry->irq, entry->dev);
                 }

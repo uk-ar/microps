@@ -54,7 +54,7 @@ struct net_device *dummy_init(void)
         return NULL;
     }
     // register dummy_isr as a interrupt sub routine
-    intr_request_irq(DUMMY_IRQ, dummy_isr, INTR_IRQ_BASE, dev->name, dev);
+    intr_request_irq(DUMMY_IRQ, dummy_isr, INTR_IRQ_SHARED, dev->name, dev);
     debugf("initialized,dev=%s", dev->name);
     return dev;
 }
