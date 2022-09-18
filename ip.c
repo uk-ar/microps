@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+#include "platform.h"
+
 #include "util.h"
 #include "net.h"
 #include "ip.h"
@@ -24,6 +26,10 @@ struct ip_hdr
 
 const ip_addr_t IP_ADDR_ANY = 0x00000000;       /* 0.0.0.0 */
 const ip_addr_t IP_ADDR_BROADCAST = 0xffffffff; /* 255.255.255.255 */
+
+/* NOTE: if you want to add/delete the entries after net_run(),
+you need to protect these lists with a mutex */
+static struct ip_iface *ifaces;
 
 int ip_addr_pton(const char *p, ip_addr_t *n)
 {
@@ -90,6 +96,70 @@ static void ip_dump(const uint8_t *data, size_t len)
     funlockfile(stderr);
 }
 
+struct ip_iface *ip_iface_alloc(const char *unicast, const char *netmask)
+{
+    struct ip_iface *iface = memory_alloc(sizeof(struct ip_iface));
+    if (!iface)
+    {
+        errorf("memory_alloc() failure");
+        return NULL;
+    }
+    // up cast
+    NET_IFACE(iface)->family = NET_IFACE_FAMILY_IP;
+
+    if (ip_addr_pton(unicast, &iface->unicast) == -1)
+    {
+        errorf("ip_addr_pton(unicast) failure");
+        memory_free(iface);
+        return NULL;
+    }
+    if (ip_addr_pton(netmask, &iface->netmask) == -1)
+    {
+        errorf("ip_add_pton(netmask) failure");
+        memory_free(iface);
+        return NULL;
+    }
+    iface->broadcast = (iface->unicast & iface->netmask) | ~(iface->netmask);
+    return iface;
+}
+
+/* NOTE: must not call after net_run() */
+int ip_iface_register(struct net_device *dev, struct ip_iface *iface)
+{
+    char addr1[IP_ADDR_STR_LEN];
+    char addr2[IP_ADDR_STR_LEN];
+    char addr3[IP_ADDR_STR_LEN];
+
+    if (net_device_add_iface(dev, NET_IFACE(iface)) == -1)
+    {
+        errorf("net_device_add_iface() failure");
+        return -1;
+    }
+    iface->next = ifaces;
+    ifaces = iface;
+
+    infof("registered: dev=%s, unicast=%s,netmask=%s,broadcast=%s", dev->name,
+          ip_addr_ntop(iface->unicast, addr1, sizeof(addr1)),
+          ip_addr_ntop(iface->netmask, addr2, sizeof(addr2)),
+          ip_addr_ntop(iface->broadcast, addr3, sizeof(addr3)));
+
+    return 0;
+    // dev->ifaces
+}
+
+// when recieve packet select if from dest address
+struct ip_iface *ip_iface_select(ip_addr_t addr)
+{
+    for (struct ip_iface *iface = ifaces; iface; iface = iface->next)
+    {
+        if (iface->unicast == addr)
+        {
+            return iface;
+        }
+    }
+    return NULL;
+}
+
 static void
 ip_input(const uint8_t *data, size_t len, struct net_device *dev)
 {
@@ -113,10 +183,10 @@ ip_input(const uint8_t *data, size_t len, struct net_device *dev)
         errorf("too short");
         return;
     }
-    uint16_t sum = cksum16((uint16_t*)hdr, hlen, 0);
+    uint16_t sum = cksum16((uint16_t *)hdr, hlen, 0);
     if (sum != 0)
     {
-        errorf("checksum mismatch,exp:0x%04x,act:0x%04x,cnt=%u",hdr->sum,sum,hlen);
+        errorf("checksum mismatch,exp:0x%04x,act:0x%04x,cnt=%u", hdr->sum, sum, hlen);
         return;
     }
     uint16_t offset = ntoh16(hdr->offset);
@@ -125,7 +195,17 @@ ip_input(const uint8_t *data, size_t len, struct net_device *dev)
         errorf("fragment does not support");
         return;
     }
-    debugf("dev=%s,protocol=%u,total=%zu", dev->name, hdr->protocol, len, total);
+
+    struct ip_iface *iface = (struct ip_iface *)
+        net_device_get_iface(dev, NET_IFACE_FAMILY_IP);
+    if (hdr->dst != iface->unicast && hdr->dst != IP_ADDR_BROADCAST &&
+        hdr->dst != iface->broadcast)
+        return;
+
+    char addr[IP_ADDR_STR_LEN];
+    debugf("dev=%s,iface=%s,protocol=%u,total=%zu", dev->name,
+           ip_addr_ntop(iface->unicast, addr, sizeof(addr)), hdr->protocol, len, total);
+
     ip_dump(data, total);
 }
 

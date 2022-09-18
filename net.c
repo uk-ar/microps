@@ -91,6 +91,30 @@ static int net_device_close(struct net_device *dev)
     return 0;
 }
 
+/* NOTE: must not be call after net_run() */
+int net_device_add_iface(struct net_device *dev, struct net_iface *iface)
+{
+    //TODO: use net_device_get_iface
+    if(net_device_get_iface(dev,iface->family)){
+        errorf("[limitation] device cannot handle the same family iface");
+        return -1;
+    }
+    iface->dev = dev;
+    iface->next = dev->ifaces;
+    dev->ifaces = iface;
+    return 0;
+}
+
+struct net_iface *net_device_get_iface(struct net_device *dev, int family)
+{
+    for (struct net_iface *iface = dev->ifaces; iface; iface = iface->next)
+    {
+        if (iface->family == family)
+            return iface;
+    }
+    return NULL;
+}
+
 int net_device_output(struct net_device *dev, uint16_t type, const uint8_t *data, size_t len, const void *dst)
 {
     if (!NET_DEVICE_IS_UP(dev))
@@ -171,9 +195,12 @@ int net_input_handler(uint16_t type, const uint8_t *data, size_t len, struct net
     return 0;
 }
 
-int net_softirq_handler(void){
-    for (struct net_protocol *proto = protocols; proto; proto = proto->next){
-        while (proto->queue.num){
+int net_softirq_handler(void)
+{
+    for (struct net_protocol *proto = protocols; proto; proto = proto->next)
+    {
+        while (proto->queue.num)
+        {
             struct net_protocol_queue_entry *entry = queue_pop(&proto->queue);
             if (proto->handler)
                 proto->handler(entry->data, entry->len, entry->dev);
