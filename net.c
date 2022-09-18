@@ -143,7 +143,6 @@ int net_protocol_register(uint16_t type,
 int net_input_handler(uint16_t type, const uint8_t *data, size_t len, struct net_device *dev)
 {
     debugf("dev=%s,type=0x%04x,len=%zu", dev->name, type, len);
-    // not yet implemented
     debugdump(data, len);
     for (struct net_protocol *proto = protocols; proto; proto = proto->next)
     {
@@ -163,11 +162,26 @@ int net_input_handler(uint16_t type, const uint8_t *data, size_t len, struct net
             errorf("queue_push failure");
             return -1;
         }
+        intr_raise_irq(INTR_IRQ_SOFTIRQ);
         debugf("queue pushed (num:%u),dev=%s,type=0x%04x,len=%zu", proto->queue.num, dev->name, type, len);
         debugdump(entry->data, len);
         return 0;
     }
     /* unsupported */
+    return 0;
+}
+
+int net_softirq_handler(void){
+    for (struct net_protocol *proto = protocols; proto; proto = proto->next){
+        while (proto->queue.num){
+            struct net_protocol_queue_entry *entry = queue_pop(&proto->queue);
+            if (proto->handler)
+                proto->handler(entry->data, entry->len, entry->dev);
+            debugf("queue poped (num:%u),dev=%s,type=0x%04x,len=%zu", proto->queue.num, entry->dev->name, proto->type, entry->len);
+            debugdump(entry->data, entry->len);
+            memory_free(entry);
+        }
+    }
     return 0;
 }
 

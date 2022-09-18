@@ -6,6 +6,8 @@
 #include "platform.h"
 
 #include "util.h"
+#include "net.h"
+
 struct irq_entry
 {
     struct irq_entry *next;
@@ -88,6 +90,10 @@ static void *intr_thread(void *arg)
         case SIGHUP:
             terminate = 1;
             break;
+        case SIGUSR1:
+            //call bottom half
+            net_softirq_handler();
+            break;
         default:
             for (entry = irqs; entry; entry = entry->next)
             {
@@ -142,5 +148,6 @@ int intr_init(void)
     pthread_barrier_init(&barrier, NULL, 2);
     sigemptyset(&sigmask);
     sigaddset(&sigmask, SIGHUP); // for the sake of stopping signal handling thread
+    sigaddset(&sigmask, SIGUSR1); // for the sake of handling protocol bottom half
     return 0;
 }

@@ -54,6 +54,7 @@ Interrunpt
 
 // min real time signal
 #define INTR_IRQ_BASE (SIGRTMIN + 1)
+#define INTR_IRQ_SOFTIRQ SIGUSR1
 
 #define INTR_IRQ_SHARED 0x0001
 
