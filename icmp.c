@@ -1,9 +1,12 @@
 #include <stdint.h>
 #include <stddef.h>
+#include <string.h>
 
 #include "util.h"
 #include "ip.h"
 #include "icmp.h"
+
+#define ICMP_BUFSIZ IP_PAYLOAD_SIZE_MAX
 
 struct icmp_hdr
 {
@@ -98,6 +101,33 @@ void icmp_input(const uint8_t *data, size_t len, ip_addr_t src, ip_addr_t dst, s
     debugf("%s => %s, len=%zu", ip_addr_ntop(src, addr1, sizeof(addr1)),
            ip_addr_ntop(dst, addr2, sizeof(addr2)), len);
     icmp_dump(data, len);
+    switch (hdr->type)
+    {
+    case ICMP_TYPE_ECHO:
+        icmp_output(ICMP_TYPE_ECHOREPLY, 0, hdr->values, (const uint8_t*)hdr + ICMP_HDR_SIZE, len, iface->unicast, src);
+        break;
+    default:
+        break;
+    }
+}
+
+int icmp_output(uint8_t type, uint8_t code, uint32_t values, const uint8_t *data, size_t len, ip_addr_t src,
+                ip_addr_t dst)
+{
+    uint8_t buf[ICMP_BUFSIZ];
+    struct icmp_hdr *hdr = (struct icmp_hdr *)buf;
+    hdr->type = type;
+    hdr->code = code;
+    hdr->values = values;
+    hdr->sum = 0;
+    uint16_t sum = cksum16((uint16_t *)hdr, len, 0);
+    hdr->sum = sum;
+    memcpy(hdr + ICMP_HDR_SIZE, data, len);
+    uint16_t msg_len = len + ICMP_HDR_SIZE; // total
+    debugf("type=%u,code=%u,values=%u,sum=0x%04x,len=%zu",
+           type, code, values, sum, msg_len);
+    icmp_dump(buf, msg_len);
+    return ip_output(IP_PROTOCOL_ICMP, buf, msg_len, src, dst);
 }
 
 int icmp_init(void)
