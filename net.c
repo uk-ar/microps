@@ -8,6 +8,7 @@
 #include "util.h"
 #include "net.h"
 #include "ip.h"
+#include "icmp.h"
 
 struct net_protocol
 {
@@ -94,8 +95,9 @@ static int net_device_close(struct net_device *dev)
 /* NOTE: must not be call after net_run() */
 int net_device_add_iface(struct net_device *dev, struct net_iface *iface)
 {
-    //TODO: use net_device_get_iface
-    if(net_device_get_iface(dev,iface->family)){
+    // TODO: use net_device_get_iface
+    if (net_device_get_iface(dev, iface->family))
+    {
         errorf("[limitation] device cannot handle the same family iface");
         return -1;
     }
@@ -255,6 +257,11 @@ int net_init(void)
     if (ip_init() == -1)
     {
         errorf("ip_init() failure");
+        return -1;
+    }
+    if (icmp_init() == -1)
+    {
+        errorf("icmp_init() failure");
         return -1;
     }
     infof("initialized");
