@@ -8,14 +8,10 @@ OBJS = util.o \
 		ip.o \
 
 TESTS = test/step0.exe \
-		test/step1.exe \
-		test/step2.exe \
-		test/step3.exe \
-		test/step4.exe \
-		test/step5.exe \
-		test/step6.exe \
 		test/step7.exe \
+		test/step8.exe \
 
+#CFLAGS=-DHEXDUMP
 CFLAGS := $(CFLAGS) -g -W -Wall -Wno-unused-parameter -iquote .
 
 ifeq ($(shell uname),Linux)
@@ -36,7 +32,7 @@ endif
 
 all: $(APPS) $(TESTS)
 
-$(APPS): %.exe : %.o $(OBJS) $(DRIVERS)
+$(APPS): %.exe : %.o $(OBJS) $(DRIVERS) net.h ip.h
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(TESTS): %.exe : %.o $(OBJS) $(DRIVERS) test/test.h

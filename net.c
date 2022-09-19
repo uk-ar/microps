@@ -12,7 +12,7 @@
 struct net_protocol
 {
     struct net_protocol *next;
-    uint16_t type;
+    net_protocol type;
     struct queue_head queue; // each protocol has its own queue
     void (*handler)(const uint8_t *data, size_t len, struct net_device *dev);
 };
@@ -115,7 +115,7 @@ struct net_iface *net_device_get_iface(struct net_device *dev, int family)
     return NULL;
 }
 
-int net_device_output(struct net_device *dev, uint16_t type, const uint8_t *data, size_t len, const void *dst)
+int net_device_output(struct net_device *dev, uint16_t proto_type, const uint8_t *data, size_t len, const void *dst)
 {
     if (!NET_DEVICE_IS_UP(dev))
     {
@@ -127,9 +127,9 @@ int net_device_output(struct net_device *dev, uint16_t type, const uint8_t *data
         errorf("too long,dev=%s,mtu=%u,len=%zu", dev->name, dev->mtu, len);
         return -1;
     }
-    debugf("dev=%s,type=0x%04x,len=%zu", dev->name, type, len);
+    debugf("dev=%s,proto_type=0x%04x,len=%zu", dev->name, proto_type, len);
     debugdump(data, len);
-    if (dev->ops->transmit(dev, type, data, len, dst) == -1)
+    if (dev->ops->transmit(dev, proto_type, data, len, dst) == -1)
     {
         errorf("device transmit failure,dev=%s,len=%zu", dev->name, len);
         return -1;
@@ -138,14 +138,14 @@ int net_device_output(struct net_device *dev, uint16_t type, const uint8_t *data
 }
 
 /* NOT: must not be call after net_run() */
-int net_protocol_register(uint16_t type,
+int net_protocol_register(uint16_t proto_type,
                           void (*handler)(const uint8_t *data, size_t len, struct net_device *dev))
 {
     for (struct net_protocol *proto = protocols; proto; proto = proto->next)
     {
-        if (proto->type == type)
+        if (proto->type == proto_type)
         {
-            errorf("already registered,type=0x%04x", type);
+            errorf("already registered,proto_type=0x%04x", proto_type);
             return -1;
         }
     }
@@ -156,11 +156,11 @@ int net_protocol_register(uint16_t type,
         return -1;
     }
     protocol->handler = handler;
-    protocol->type = type;
+    protocol->type = proto_type;
     queue_init(&protocol->queue);
     protocol->next = protocols;
     protocols = protocol;
-    infof("protocol registered,type=0x%04x", type);
+    infof("protocol registered,proto_type=0x%04x", proto_type);
     return 0;
 }
 

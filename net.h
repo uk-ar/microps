@@ -9,9 +9,15 @@
 #endif
 
 // type
-#define NET_DEVICE_TYPE_DUMMY 0x0000
-#define NET_DEVICE_TYPE_LOOPBACK 0x0001
-#define NET_DEVICE_TYPE_ETHERNET 0x0002
+typedef enum
+{
+    NET_DEVICE_TYPE_DUMMY = 0x0000,
+    NET_DEVICE_TYPE_LOOPBACK = 0x0001,
+    NET_DEVICE_TYPE_ETHERNET = 0x0002
+} device_type;
+//#define NET_DEVICE_TYPE_DUMMY 0x0000
+//#define NET_DEVICE_TYPE_LOOPBACK 0x0001
+//#define NET_DEVICE_TYPE_ETHERNET 0x0002
 
 #define NET_DEVICE_FLAG_UP 0x0001
 #define NET_DEVICE_FLAG_LOOPBACK 0x0010
@@ -25,9 +31,18 @@
 #define NET_DEVICE_STATE(x) (NET_DEVICE_FLAG_UP ? "up" : "down")
 
 /* NOTE: use same value as the Ethernet types */
+typedef enum
+{
+    NET_PROTOCOL_TYPE_IP = 0x0800,
+    NET_PROTOCOL_TYPE_ARP = 0x0806,
+    NET_PROTOCOL_TYPE_IPV6 = 0x86dd
+} net_protocol;
+
+/*
 #define NET_PROTOCOL_TYPE_IP 0x0800
 #define NET_PROTOCOL_TYPE_ARP 0x0806
 #define NET_PROTOCOL_TYPE_IPV6 0x86dd
+*/
 
 #define NET_IFACE_FAMILY_IP 1
 #define NET_IFACE_FAMILY_IPV6 2
@@ -41,7 +56,7 @@ struct net_device
  ter net_run(), you need to protect ifaces with a mutex. */
     unsigned int index;
     char name[IFNAMSIZ];
-    uint16_t type;
+    device_type type;
     uint16_t mtu;
     uint16_t flags;
     uint16_t hlen; // header length
