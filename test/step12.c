@@ -9,6 +9,7 @@
 
 #include "driver/loopback.h"
 #include "test.h"
+#include "driver/ether_tap.h"
 
 static volatile sig_atomic_t terminate;
 
@@ -45,6 +46,23 @@ static int setup(void)
         errorf("ip_iface_register() failure");
         return -1;
     }
+    dev = ether_tap_init(ETHER_TAP_NAME, ETHER_TAP_HW_ADDR);
+    if (!dev)
+    {
+        errorf("ether_tap_init() failure");
+        return -1;
+    }
+    iface = ip_iface_alloc(ETHER_TAP_IP_ADDR, ETHER_TAP_NETMASK);
+    if (!iface)
+    {
+        errorf("ip_iface_alloc() failure");
+        return -1;
+    }
+    if (ip_iface_register(dev, iface) == -1)
+    {
+        errorf("ip_iface_register() failure");
+        return -1;
+    }
     if (net_run() == -1)
     {
         errorf("net_run() failure");
@@ -59,24 +77,14 @@ void cleanup()
 }
 int main(int argc, char *argv[])
 {
+    signal(SIGINT, on_signal);
     if (setup() == -1)
     {
         errorf("setup() failure");
         return -1;
     }
-    ip_addr_t src, dst;
-    size_t offset = IP_HDR_SIZE_MIN + ICMP_HDR_SIZE;
-    ip_addr_pton(LOOPBACK_IP_ADDR, &src);
-    dst = src;
-    uint16_t id = getpid() % UINT16_MAX;
-    uint16_t seq = 0;
     while (!terminate)
-    { // until signal raise
-        if (icmp_output(ICMP_TYPE_ECHO, 0, hton32(id << 16 | seq++), test_data + offset, sizeof(test_data) - offset, src, dst) == -1)
-        {
-            errorf("ip_output() failure");
-            break;
-        }
+    { // until signal raise    
         sleep(1);
     }
     cleanup();

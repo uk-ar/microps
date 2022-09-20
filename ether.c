@@ -1,6 +1,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "ether.h"
 #include "util.h"
@@ -22,42 +24,48 @@ int ether_addr_pton(const char *p, uint8_t *n)
     char *ep;
     long val;
 
-    if(!p || !n){
+    if (!p || !n)
+    {
         return -1;
     }
-    for (index = 0; index < ETHER_ADDR_LEN;index++){
+    for (index = 0; index < ETHER_ADDR_LEN; index++)
+    {
         val = strtol(p, &ep, 16);
-        if(ep==p||val<0||val>0xff||(index<ETHER_ADDR_LEN-1&&*ep!=':')){
+        if (ep == p || val < 0 || val > 0xff || (index < ETHER_ADDR_LEN - 1 && *ep != ':'))
+        {
             break;
         }
         n[index] = (uint8_t)val;
         p = ep + 1;
     }
-    if(index!=ETHER_ADDR_LEN||*ep!='\0'){
+    if (index != ETHER_ADDR_LEN || *ep != '\0')
+    {
         return -1;
     }
     return 0;
 }
 
-char*ether_addr_ntop(const uint8_t*n,char*p,size_t size){
-    if(!n||!p){
+char *ether_addr_ntop(const uint8_t *n, char *p, size_t size)
+{
+    if (!n || !p)
+    {
         return NULL;
     }
-    snprintf(p, size, "%02x:%02x:%02x:%02x:%02x:%02x",n[0],n[1],n[2],n[3],n[4],n[5]);
+    snprintf(p, size, "%02x:%02x:%02x:%02x:%02x:%02x", n[0], n[1], n[2], n[3], n[4], n[5]);
     return p;
 }
 
 static void ether_dump(const uint8_t *frame, size_t flen)
 {
     struct ether_hdr *hdr = (struct ether_hdr *)frame;
-    char addr[ETHER_ADDR_LEN];
+    char addr[ETHER_ADDR_STR_LEN];
 
     flockfile(stderr);
-    fprintf(stderr, "   src: %s\n", ether_addr_ntop(hdr->src));
-    fprintf(stderr, "   dst: %s\n", ether_addr_ntop(hdr->dst));
-    fprintf(stderr, "  type: 0x%04x\n", hdr->type);
+    fprintf(stderr, "   src: %s\n", ether_addr_ntop(hdr->src, addr, sizeof(addr)));
+    fprintf(stderr, "   dst: %s\n", ether_addr_ntop(hdr->dst, addr, sizeof(addr)));
+    fprintf(stderr, "  type: 0x%04x\n", ntoh16(hdr->type));
 #ifdef HEXDUMP
-    hexdump(frame, flen);
+    hexdump(stderr, frame, flen);
 #endif
     funlockfile(stderr);
 }
@@ -108,7 +116,7 @@ int ether_input_helper(struct net_device *dev, ether_input_func_t callback)
             return -1;
         }
     }
-    type = ntoh(hdr->type);
+    type = ntoh16(hdr->type);
     debugf("dev=%s, type=0x%04x, len=%zd", dev->name, type, flen);
     ether_dump(frame, flen);
     return net_input_handler(type, (uint8_t *)(hdr + 1), flen - sizeof(*hdr), dev);
