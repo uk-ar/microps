@@ -8,10 +8,11 @@ OBJS = util.o \
 		ip.o \
 		icmp.o \
 		ether.o \
+		arp.o \
 
 TESTS = test/step0.exe \
-		test/step11.exe \
 		test/step12.exe \
+		test/step13.exe \
 
 #CFLAGS=-DHEXDUMP
 CFLAGS := $(CFLAGS) -g -W -Wall -Wno-unused-parameter -iquote .
