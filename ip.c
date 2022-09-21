@@ -10,6 +10,7 @@
 #include "util.h"
 #include "net.h"
 #include "ip.h"
+#include "arp.h"
 
 struct ip_hdr
 {
@@ -270,12 +271,13 @@ static int ip_output_device(struct ip_iface *iface, const uint8_t *data,
             memcpy(hwaddr, NET_IFACE(iface)->dev->broadcast, NET_IFACE(iface)->dev->alen);
         }
         else
-        {
-            errorf("arp does not implemented");
-            return -1;
+        {            
+            int ret = arp_resolve(NET_IFACE(iface), dst, hwaddr);
+            if (ret != ARP_RESOLVER_FOUNT)
+                return ret;
         }
     }
-    return net_device_output(NET_IFACE(iface)->dev, NET_PROTOCOL_TYPE_IP, data, len, NULL);
+    return net_device_output(NET_IFACE(iface)->dev, NET_PROTOCOL_TYPE_IP, data, len, hwaddr);
 }
 
 static ssize_t ip_output_core(struct ip_iface *iface, uint8_t protocol, const uint8_t *data,
