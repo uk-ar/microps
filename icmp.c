@@ -104,7 +104,7 @@ void icmp_input(const uint8_t *data, size_t len, ip_addr_t src, ip_addr_t dst, s
     switch (hdr->type)
     {
     case ICMP_TYPE_ECHO:
-        icmp_output(ICMP_TYPE_ECHOREPLY, 0, hdr->values, (const uint8_t*)hdr + ICMP_HDR_SIZE, len, iface->unicast, src);
+        icmp_output(ICMP_TYPE_ECHOREPLY, 0, hdr->values, (const uint8_t *)hdr + ICMP_HDR_SIZE, len, iface->unicast, src);
         break;
     default:
         break;
@@ -124,7 +124,10 @@ int icmp_output(uint8_t type, uint8_t code, uint32_t values, const uint8_t *data
     hdr->sum = sum;
     memcpy(hdr + ICMP_HDR_SIZE, data, len);
     uint16_t msg_len = len + ICMP_HDR_SIZE; // total
-    debugf("type=%u,code=%u,values=%u,sum=0x%04x,len=%zu",
+    char addr1[IP_ADDR_STR_LEN];
+    char addr2[IP_ADDR_STR_LEN];
+    debugf("%s=>%s, type=%u, code=%u, values=%u, sum=0x%04x, len=%zu",
+           ip_addr_ntop(src, addr1, sizeof(addr1)), ip_addr_ntop(dst, addr2, sizeof(addr2)),
            type, code, values, sum, msg_len);
     icmp_dump(buf, msg_len);
     return ip_output(IP_PROTOCOL_ICMP, buf, msg_len, src, dst);
