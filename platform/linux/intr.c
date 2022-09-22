@@ -2,6 +2,8 @@
 #include <string.h>
 #include <signal.h>
 #include <pthread.h>
+#include <time.h>
+#include <errno.h>
 
 #include "platform.h"
 
@@ -69,14 +71,38 @@ int intr_raise_irq(unsigned int irq)
     return pthread_kill(tid, (int)irq);
 }
 
+static int intr_timer_setup(struct itimerspec *interval)
+{
+    timer_t id;
+
+    if (timer_create(CLOCK_REALTIME, NULL, &id) == -1)
+    {
+        errorf("timer_create:%s", strerror(errno));
+        return -1;
+    }
+    if (timer_settime(id, 0, interval, NULL) == -1)
+    {
+        errorf("timer_settime:%s", strerror(errno));
+        return -1;
+    }
+    return 0;
+}
+
 // bottom half of signal handling
 static void *intr_thread(void *arg)
 {
     int terminate = 0, sig, err;
     struct irq_entry *entry;
+    const struct timespec ts = {0, 1000000}; /* 1 ms */
+    struct itimerspec interval = {ts, ts};
 
     debugf("start...");
     pthread_barrier_wait(&barrier);
+    if (intr_timer_setup(&interval) == -1)
+    {
+        errorf("intr_timer_setup() failure");
+        return NULL;
+    }
     while (!terminate)
     {
         err = sigwait(&sigmask, &sig);
@@ -91,8 +117,11 @@ static void *intr_thread(void *arg)
             terminate = 1;
             break;
         case SIGUSR1:
-            //call bottom half
+            // call bottom half
             net_softirq_handler();
+            break;
+        case SIGALRM:
+            net_timer_handler();
             break;
         default:
             for (entry = irqs; entry; entry = entry->next)
@@ -147,7 +176,8 @@ int intr_init(void)
     tid = pthread_self();
     pthread_barrier_init(&barrier, NULL, 2);
     sigemptyset(&sigmask);
-    sigaddset(&sigmask, SIGHUP); // for the sake of stopping signal handling thread
+    sigaddset(&sigmask, SIGHUP);  // for the sake of stopping signal handling thread
     sigaddset(&sigmask, SIGUSR1); // for the sake of handling protocol bottom half
+    sigaddset(&sigmask, SIGALRM); // when timer event occur raise SIGALRM
     return 0;
 }
