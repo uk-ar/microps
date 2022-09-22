@@ -271,9 +271,9 @@ static int ip_output_device(struct ip_iface *iface, const uint8_t *data,
             memcpy(hwaddr, NET_IFACE(iface)->dev->broadcast, NET_IFACE(iface)->dev->alen);
         }
         else
-        {            
+        {
             int ret = arp_resolve(NET_IFACE(iface), dst, hwaddr);
-            if (ret != ARP_RESOLVER_FOUNT)
+            if (ret != ARP_RESOLVE_FOUND)
                 return ret;
         }
     }
