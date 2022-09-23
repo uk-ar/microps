@@ -93,7 +93,7 @@ static int ether_tap_open(struct net_device *dev)
         close(tap->fd);
         return -1;
     }
-    // Use other signal instead of SIGIO
+    // Use ETHER_TAP_IRQ instead of SIGIO
     if (fcntl(tap->fd, F_SETSIG, tap->irq) == -1)
     {
         errorf("fcntl(F_SETSIG):%s,dev=%s", strerror(errno), dev->name);
@@ -230,7 +230,7 @@ struct net_device *ether_tap_init(const char *name, const char *addr)
         memory_free(tap);
         return NULL;
     }
-    intr_request_irq(tap->irq, ether_tap_isr, INTR_IRQ_SHARED, dev->name, dev);
+    intr_request_irq(tap->irq, ether_tap_isr, INTR_IRQ_SHARED, dev->name, dev);//irq=0x25,37
     infof("ethernet device initialized,dev=%s", dev->name);
     return dev;
 }
