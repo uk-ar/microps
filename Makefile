@@ -11,8 +11,8 @@ OBJS = util.o \
 		arp.o \
 		udp.o \
 
-TESTS = test/step13.exe \
-		test/step19.exe \
+TESTS = test/step20-2.exe \
+		test/step20-1.exe \
 
 #CFLAGS=-DHEXDUMP
 CFLAGS := $(CFLAGS) -g -W -Wall -Wno-unused-parameter -iquote .
