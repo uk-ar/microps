@@ -12,7 +12,7 @@ OBJS = util.o \
 		udp.o \
 
 TESTS = test/step20-2.exe \
-		test/step20-1.exe \
+		test/step21.exe \
 
 #CFLAGS=-DHEXDUMP
 CFLAGS := $(CFLAGS) -g -W -Wall -Wno-unused-parameter -iquote .
@@ -22,7 +22,7 @@ ifeq ($(shell uname),Linux)
   LDFLAGS := $(LDFLAGS) -lrt
   BASE = platform/linux
   CFLAGS := $(CFLAGS) -pthread -iquote $(BASE)
-  OBJS := $(OBJS) $(BASE)/intr.o
+  OBJS := $(OBJS) $(BASE)/intr.o $(BASE)/sched.o
   DRIVERS := $(DRIVERS) $(BASE)/driver/ether_tap.o
 endif
 

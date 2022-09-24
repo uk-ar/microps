@@ -120,6 +120,9 @@ static void *intr_thread(void *arg)
             // call bottom half
             net_softirq_handler();
             break;
+        case SIGUSR2:
+            net_event_handler();
+            break;
         case SIGALRM:
             net_timer_handler();
             break;
@@ -178,6 +181,7 @@ int intr_init(void)
     sigemptyset(&sigmask);
     sigaddset(&sigmask, SIGHUP);  // for the sake of stopping signal handling thread
     sigaddset(&sigmask, SIGUSR1); // for the sake of handling protocol bottom half
+    sigaddset(&sigmask, SIGUSR2); // for event handling
     sigaddset(&sigmask, SIGALRM); // when timer event occur raise SIGALRM
     return 0;
 }
