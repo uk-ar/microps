@@ -8,7 +8,7 @@
             "name": "test",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/test/step18.exe",
+            "program": "${workspaceFolder}/test/step24.exe",
             "args": [],
             "cwd": "${fileDirname}",
             "environment": [],

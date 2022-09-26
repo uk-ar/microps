@@ -13,7 +13,7 @@ OBJS = util.o \
 		tcp.o \
 
 TESTS = test/step20-2.exe \
-		test/step23.exe \
+		test/step24.exe \
 
 #CFLAGS=-DHEXDUMP
 CFLAGS := $(CFLAGS) -g -W -Wall -Wno-unused-parameter -iquote .
