@@ -114,6 +114,10 @@ struct tcp_queue_entry
 static mutex_t mutex = MUTEX_INITIALIZER;
 static struct tcp_pcb pcbs[TCP_PCB_SIZE];
 
+static int tcp_retransmit_queue_add(struct tcp_pcb *pcb, uint32_t seq, uint8_t flg, uint8_t *data,
+                                    size_t len);
+static void tcp_retransmit_queue_cleanup(struct tcp_pcb *pcb);
+
 static char *
 tcp_flg_ntoa(uint8_t flg)
 {
@@ -358,9 +362,54 @@ static void tcp_segment_arrives(struct tcp_segment_info *seg, uint8_t flags, uin
         return;
     case TCP_PCB_STATE_SYN_SENT:
         // 1st check the ACK bit
+        if (TCP_FLG_ISSET(flags, TCP_FLG_ACK))
+        {
+            if (seg->ack <= pcb->iss || seg->ack > pcb->snd.nxt)
+            {
+                tcp_output_segment(seg->ack, 0, TCP_FLG_RST, 0, NULL, 0, local, foreign);
+                return;
+            }
+        }
+        if (pcb->snd.una <= seg->ack && seg->ack <= pcb->snd.nxt)
+        {
+            acceptable = 1;
+        }
         // 2nd check the RST bit
         // 3rd check security and precedence (ignore)
         // 4th check the SYN bit
+        if (TCP_FLG_ISSET(flags, TCP_FLG_SYN))
+        {
+            pcb->rcv.nxt = seg->seq + 1;
+            pcb->irs = seg->seq; // save sender's sequence number
+            if (acceptable)
+            {
+                // accepting ack
+                pcb->snd.una = seg->ack;           // update unckecked sequence, ack value represent next seqence number
+                tcp_retransmit_queue_cleanup(pcb); // cleanup acked tcp segment
+            }
+            if (pcb->snd.una > pcb->iss)
+            {
+                // if received ACK for SYN
+                pcb->state = TCP_PCB_STATE_ESTABLISHED;
+                tcp_output(pcb, TCP_FLG_ACK, NULL, 0);
+                // NOTE: not specified in the RFC793, but send window initialization required
+                pcb->snd.wnd = seg->wnd;
+                pcb->snd.wl1 = seg->seq;
+                pcb->snd.wl2 = seg->ack;
+                sched_wakeup(&pcb->ctx);
+                // ignore: continue processing at the sixth step below where the URG bit is checked
+                return;
+            }
+            else
+            {
+                // handle sending SYN both side
+                pcb->state = TCP_PCB_STATE_SYN_RECEIVED;
+                tcp_output(pcb, TCP_FLG_SYN | TCP_FLG_ACK, NULL, 0);
+                // ignore: If there are other controls or text in the segment, queue them for processing
+                //  after ther ESTABLISHED state has been reached
+                return;
+            }
+        }
         // 5th, if neither of the SYN or RST bits is set then drop the segment and return
         // drop segment
         return;
@@ -646,7 +695,7 @@ static void tcp_input(const uint8_t *data, size_t len, ip_addr_t src, ip_addr_t 
 static void tcp_timer(void)
 {
     struct tcp_pcb *pcb;
-    mutx_lock(&mutex);
+    mutex_lock(&mutex);
     for (pcb = pcbs; pcb < tailof(pcbs); pcb++)
     {
         if (pcb->state == TCP_PCB_STATE_FREE)
@@ -712,10 +761,25 @@ int tcp_open_rfc793(struct ip_endpoint *local, struct ip_endpoint *foreign, int 
     if (active)
     {
         // send
-        errorf("active open does not implemented");
-        tcp_pcb_release(pcb);
+        debugf("active open: local=%s, foreign=%s, connecting...",
+               ip_endpoint_ntop(local, ep1, sizeof(ep1)), ip_endpoint_ntop(foreign, ep2, sizeof(ep2)));
+        pcb->local = *local;
+        pcb->foreign = *foreign;
+        pcb->rcv.wnd = sizeof(pcb->buf);
+        pcb->iss = random(); // initial sequence number
+        if (tcp_output(pcb, TCP_FLG_SYN, NULL, 0) == -1)
+        {
+            // send SYN segment
+            errorf("tcp_output() failure");
+            pcb->state = TCP_PCB_STATE_CLOSED;
+            tcp_pcb_release(pcb);
+            mutex_unlock(&mutex);
+            return -1;
+        }
+        pcb->snd.una = pcb->iss;     // set as not received ack
+        pcb->snd.nxt = pcb->iss + 1; // next sequence number
+        pcb->state = TCP_PCB_STATE_SYN_SENT;
         mutex_unlock(&mutex);
-        return -1;
     }
     else
     {
