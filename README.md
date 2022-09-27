@@ -1,6 +1,6 @@
 # microps
 * This is a protocol stack.
-* microps can handle IP/ICMP/ARP/UDP.
+* microps can handle IP/ICMP/ARP/UDP/TCP.
 * microps provides socket like API.
 * microps supports x86-64 Linux only.
 # resources
