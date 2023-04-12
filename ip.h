@@ -64,5 +64,5 @@ extern int ip_protocol_register(uint8_t type,
                                                 ip_addr_t src, ip_addr_t dst, struct ip_iface *iface));
 
 extern int ip_init(void);
-
+extern void ip_shutdown(void);
 #endif

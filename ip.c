@@ -491,3 +491,9 @@ int ip_init(void)
     }
     return 0;
 }
+
+void ip_shutdown(void){
+    ifaces = NULL;
+    protocols=NULL;
+    routes=NULL;
+}

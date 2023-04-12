@@ -17,10 +17,11 @@ pub fn build(b: *std.build.Builder) void {
     lib.addCSourceFile("icmp.c", &[_][]const u8{""});
     lib.addCSourceFile("tcp.c", &[_][]const u8{""});
     lib.addCSourceFile("driver/dummy.c", &[_][]const u8{""});
+    lib.addCSourceFile("driver/loopback.c", &[_][]const u8{""});
     lib.addIncludePath("./");
     lib.addCSourceFile("./platform/linux/intr.c", &[_][]const u8{""});
     lib.addCSourceFile("./platform/linux/sched.c", &[_][]const u8{""});
-    lib.linkLibC();//for stdio.h
+    lib.linkLibC(); //for stdio.h
     lib.addIncludePath("./platform/linux");
     lib.install();
 

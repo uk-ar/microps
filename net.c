@@ -335,6 +335,11 @@ void net_shutdown(void)
         net_device_close(dev);
     }
     intr_shutdown();
+    // FIXME: leak
+    devices = NULL;
+    protocols = NULL;
+    timers = NULL;
+    events = NULL;
     debugf("shutting down");
 }
 // 1. net_init
